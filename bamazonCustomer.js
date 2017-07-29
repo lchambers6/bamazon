@@ -19,45 +19,50 @@ function promptBuyers() {
     inquirer.prompt([
         {
             name: "item_id",
-            message: "What is the id of the product you want to buy?"
+            message: "What is the ID of the product you want to buy?"
         }, {
             name: "stock_quantity",
             message: "How many units would you like to buy?"
         }
         ]).then(function(answers) {
-            console.log(answers.item_id + "    " + answers.stock_quantity)
+            pullProduct(answers.item_id, answers.stock_quantity)
         });
 };
-// function addSong() {
-//   console.log("Inserting a new Song...\n");
-//   var query = connection.query("INSERT INTO songs SET ?", 
-//     {
-//       title: "Intertwined", 
-//       artist:"The Hush Sound", 
-//       genre: "Indie"
-//     }, function(err, res) {
-//       if (err) throw err;
-//       console.log(res.affectedRows + " product inserted!\n");
-    
-//   });
-// };
 
-// function queryAllSongs() {
-//   connection.query("SELECT * FROM songs", function(err, res) {
-//     for (var i = 0; i < res.length; i++) {
-//       console.log(res[i].id + " | " + res[i].title + " | " + res[i].artist + " | " + res[i].genre);
-//     }
-//     console.log("-----------------------------------");
-//   });
-// }
+function repromptBuyers() {
+    inquirer.prompt([
+        {
+            type: "confirm",
+            message: "Do you want to order a different number of units oa a different product?",
+            name: "confirm",
+            default: true
+        },
+        ]).then(function(answers) {
+            if (answers.confirm) {
+                promptBuyers();
+            } else {
+                console.log("Thank you. Have a nice day.");
+                process.exit();
+            }
+        });
+};
 
-// function queryDanceSongs() {
-//   var query = connection.query("SELECT * FROM songs WHERE genre=?", ["Dance"], function(err, res) {
-//     for (var i = 0; i < res.length; i++) {
-//       console.log(res[i].id + " | " + res[i].title + " | " + res[i].artist + " | " + res[i].genre);
-//     }
-//   });
+function pullProduct(item_id, stock_quantity) {
+  var query = connection.query("SELECT product_name, stock_quantity, price FROM products WHERE item_id=?", [item_id], function(err, res) {
+    if (res.length === 0) {
+        console.log("No product with supplied ID exists in the inventory.")
+    } else if (res[0].stock_quantity < stock_quantity) {
+        console.log("There is only " + res[0].stock_quantity + " orders of " + res[0].product_name + " in stock.");
+        repromptBuyers();
+    } else {
+        console.log("You have purchased " + stock_quantity + " orders of " + res[0].product_name + " costing $" + (stock_quantity * res[0].price).toFixed(2));
+        reduceStock(item_id, stock_quantity);
+    }
+  });
+};
 
-//   // logs the actual query being run
-//   console.log(query.sql);
-// }
+function reduceStock(item_id, stock_quantity) {
+     var query = connection.query("UPDATE products SET stock_quantity = stock_quantity - ? WHERE item_id=?", [stock_quantity, item_id], function(err, res) {
+        repromptBuyers();
+     });
+}
